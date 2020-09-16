@@ -12,12 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 using UnityEngine;
+using System.Diagnostics;
 
 namespace RosSharp.RosBridgeClient
 {
     [RequireComponent(typeof(RosConnector))]
-    public class ImageSubscriber : Subscriber<Messages.Sensor.CompressedImage>
+    public class DepthImageSubscriber : Subscriber<Messages.Sensor.CompressedImage>
     {
         public MeshRenderer meshRenderer;
 
@@ -31,8 +33,12 @@ namespace RosSharp.RosBridgeClient
             get { return imageData; }
         }
 
-        private bool isMessageReceived=false;
-
+        private bool isMessageReceived;
+        public bool IsMessageReceived
+        {
+            get { return isMessageReceived; }
+        }
+        
         private Messages.Standard.Time stamp;
         public Messages.Standard.Time Stamp
         {
@@ -41,7 +47,7 @@ namespace RosSharp.RosBridgeClient
 
         protected override void Start()
         {
-			base.Start();
+            base.Start();
             texture2D = new Texture2D(1, 1);
             meshRenderer.material = new Material(Shader.Find("Standard"));
         }
