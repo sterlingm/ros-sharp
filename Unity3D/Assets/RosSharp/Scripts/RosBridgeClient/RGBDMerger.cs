@@ -84,13 +84,13 @@ public class RGBDMerger : MonoBehaviour
     }
 
 
-    protected void PublishRGB()
+    private void PublishRGB()
     {
         setRGBMsgFields();
         GetComponent<RosConnector>().RosSocket.Publish(publicationIdRGB, rgbImage);
     }
 
-    protected void PublishDepth()
+    private void PublishDepth()
     {
         setDepthMsgFields();
         GetComponent<RosConnector>().RosSocket.Publish(publicationIdDepth, depthImage);
@@ -122,7 +122,7 @@ public class RGBDMerger : MonoBehaviour
         depthImage.header.frame_id = "camera_rgb_optical_frame";
     }
 
-    private void DecompressRGB()
+    protected void DecompressRGB()
     {
         // Calculate number of elements in byte array
         int len= rgbImageSub.width * rgbImageSub.height;
@@ -150,7 +150,7 @@ public class RGBDMerger : MonoBehaviour
         Marshal.FreeHGlobal(mem);
     }
 
-    private void DecompressDepth()
+    protected void DecompressDepth()
     {
         // Calculate number of elements in byte array
         // Dynamically determine number of bits to represent pixels? 8bit vs 16bit vs 32bit
@@ -178,7 +178,7 @@ public class RGBDMerger : MonoBehaviour
         Marshal.FreeHGlobal(memDepth);
     }
 
-    void DecompressImages()
+    protected void DecompressImages()
     {
         // Each decompression takes ~10-30ms
 
@@ -190,6 +190,12 @@ public class RGBDMerger : MonoBehaviour
         {
             DecompressDepth();
         }
+    }
+
+
+    protected void MergeImages()
+    {
+
     }
 
 }
