@@ -147,7 +147,6 @@ public class RGBDMerger : MonoBehaviour
         Marshal.Copy(mem, rgbImage.data, 0, len);
 
         // Deallocate unmanaged memory
-        // Unity crashes here?
         Marshal.FreeHGlobal(mem);
     }
 
@@ -176,7 +175,6 @@ public class RGBDMerger : MonoBehaviour
         Marshal.Copy(memDepth, depthImage.data, 0, lenDepth);
 
         // Deallocate unmanaged memory
-        // Unity crashes here?
         Marshal.FreeHGlobal(memDepth);
     }
 
