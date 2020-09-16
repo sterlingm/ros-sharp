@@ -12,39 +12,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 using UnityEngine;
 
 namespace RosSharp.RosBridgeClient
 {
     [RequireComponent(typeof(RosConnector))]
-    public class ImageSubscriber : Subscriber<Messages.Sensor.CompressedImage>
+    public class ImageRawSubscriber : Subscriber<Messages.Sensor.Image>
     {
-        public MeshRenderer meshRenderer;
 
         public int height;
         public int width;
         public string encoding;
 
-        private Texture2D texture2D;
         private byte[] imageData;
         public byte[] ImageData
         {
             get { return imageData; }
         }
-
-        private bool isMessageReceived=false;
+        private bool isMessageReceived;
 
         private Messages.Standard.Time stamp;
         public Messages.Standard.Time Stamp
         {
             get { return stamp; }
         }
-
         protected override void Start()
         {
 			base.Start();
-            texture2D = new Texture2D(1, 1);
-            meshRenderer.material = new Material(Shader.Find("Standard"));
             stamp = new Messages.Standard.Time();
         }
         private void Update()
@@ -53,12 +48,12 @@ namespace RosSharp.RosBridgeClient
                 ProcessMessage();
         }
 
-        protected override void ReceiveMessage(Messages.Sensor.CompressedImage compressedImage)
+        protected override void ReceiveMessage(Messages.Sensor.Image compressedImage)
         {
             double lastTime = (double)stamp.secs + (double)(stamp.nsecs * .000000001);
             double nowTime = (double)compressedImage.header.stamp.secs + (double)(compressedImage.header.stamp.nsecs * .000000001);
-            //MonoBehaviour.print(string.Format("rgb compressed last time: {0} now time: {1}", lastTime, nowTime));
-            MonoBehaviour.print(string.Format("rgb compressed elapsed time: {0}", (nowTime - lastTime)));
+            //MonoBehaviour.print(string.Format("raw last time: {0} now time: {1}", lastTime, nowTime));
+            MonoBehaviour.print(string.Format("raw elapsed time: {0}", (nowTime - lastTime)));
             stamp = compressedImage.header.stamp;
             imageData = compressedImage.data;
             isMessageReceived = true;
@@ -66,9 +61,6 @@ namespace RosSharp.RosBridgeClient
 
         private void ProcessMessage()
         {
-            texture2D.LoadImage(imageData);
-            texture2D.Apply();
-            meshRenderer.material.SetTexture("_MainTex", texture2D);
             isMessageReceived = false;
         }
     }

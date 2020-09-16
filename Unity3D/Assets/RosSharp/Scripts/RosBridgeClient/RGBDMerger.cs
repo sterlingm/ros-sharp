@@ -12,15 +12,19 @@ public class RGBDMerger : MonoBehaviour
 
     public ImageSubscriber rgbImageSub;
     public DepthImageSubscriber depthImageSub;
+    public ImageRawSubscriber depthImageRawSub;
+
 
     public RosSharp.RosBridgeClient.Messages.Sensor.Image rgbImage;
     public RosSharp.RosBridgeClient.Messages.Sensor.Image depthImage;
+
+    public bool usingCompressedDepth;
 
     public string TopicRGB;
     private string publicationIdRGB;
     public string TopicDepth;
     private string publicationIdDepth;
-    
+
 
     // Start is called before the first frame update
     void Start()
@@ -38,33 +42,95 @@ public class RGBDMerger : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // Make sure both images have been received
-        if (rgbImageSub.ImageData != null && depthImageSub.ImageData != null)
+        RosSharp.RosBridgeClient.Messages.Standard.Time rgbStamp = null;
+        RosSharp.RosBridgeClient.Messages.Standard.Time depthStamp = null;
+
+        // If we are getting a compressed depth image
+        if (usingCompressedDepth)
         {
-            // Check if the images are stamped close together
-            if (rgbImageSub.Stamp.secs - depthImageSub.Stamp.secs < 1)
+            // Make sure both images have been received
+            if (rgbImageSub.ImageData != null && depthImageSub.ImageData != null)
             {
-                DecompressImages();
-                // MergeImages();
+                rgbStamp = rgbImageSub.Stamp;
+                depthStamp = depthImageSub.Stamp;
             }
+        }
+        // Else, we're getting the raw depth image
+        else
+        {
+            // Make sure both images have been received
+            if (rgbImageSub.ImageData != null && depthImageRawSub.ImageData != null)
+            {
+                rgbStamp = rgbImageSub.Stamp;
+                depthStamp = depthImageRawSub.Stamp;
+            }
+        }
+
+
+        // Check if the images are stamped close together
+        if (rgbStamp != null && (rgbStamp.secs - depthStamp.secs < 1))
+        {
+            DecompressImages();
+            if (usingCompressedDepth == false)
+            {
+                depthImage.data = depthImageRawSub.ImageData;
+            }
+
+            // Test by publishing image and checking rviz
+            PublishRGB();
+            PublishDepth();
+            //MergeImages();
         }
     }
 
 
-    protected void PublishRGB(RosSharp.RosBridgeClient.Messages.Sensor.Image message)
+    protected void PublishRGB()
     {
-        GetComponent<RosConnector>().RosSocket.Publish(publicationIdRGB, message);
+        setRGBMsgFields();
+        GetComponent<RosConnector>().RosSocket.Publish(publicationIdRGB, rgbImage);
     }
 
-    protected void PublishDepth(RosSharp.RosBridgeClient.Messages.Sensor.Image message)
+    protected void PublishDepth()
     {
-        GetComponent<RosConnector>().RosSocket.Publish(publicationIdDepth, message);
+        setDepthMsgFields();
+        GetComponent<RosConnector>().RosSocket.Publish(publicationIdDepth, depthImage);
     }
 
-    private void decompressRGB()
+    // For publishing for testing
+    private void setRGBMsgFields()
+    {
+        // Set image fields
+        rgbImage.encoding = rgbImageSub.encoding;
+        rgbImage.height = 480;
+        rgbImage.width = 640;
+        rgbImage.is_bigendian = 0;
+        rgbImage.step = 1920;
+
+        rgbImage.header.frame_id = "camera_rgb_optical_frame";
+    }
+    
+
+    // For publishing for testing
+    private void setDepthMsgFields()
+    {
+        // Set image fields for png
+        depthImage.encoding = usingCompressedDepth ? depthImageSub.encoding : depthImageRawSub.encoding;
+        depthImage.height = 480;
+        depthImage.width = 640;
+        depthImage.is_bigendian = 0;
+        depthImage.step = 1280;
+        depthImage.header.frame_id = "camera_rgb_optical_frame";
+    }
+
+    private void DecompressRGB()
     {
         // Calculate number of elements in byte array
-        int len = (rgbImageSub.width * 3) * rgbImageSub.height;
+        int len= rgbImageSub.width * rgbImageSub.height;
+        if (rgbImageSub.encoding.Equals("rgb8"))
+        {
+            len *= 3;
+        }
+        // Put in other encoding representations...
 
         // Allocate managed memory array
         rgbImage.data = new byte[len];
@@ -83,23 +149,19 @@ public class RGBDMerger : MonoBehaviour
         // Deallocate unmanaged memory
         // Unity crashes here?
         Marshal.FreeHGlobal(mem);
-
-        // Set image fields
-        rgbImage.encoding = "rgb8";
-        rgbImage.height = 480;
-        rgbImage.width = 640;
-        rgbImage.is_bigendian = 0;
-        rgbImage.step = 1920;
-
-        rgbImage.header.frame_id = "camera_rgb_optical_frame";
     }
 
-    private void decompressDepth()
+    private void DecompressDepth()
     {
         // Calculate number of elements in byte array
         // Dynamically determine number of bits to represent pixels? 8bit vs 16bit vs 32bit
         // pngs are 32 bit so *4 is used
-        int lenDepth = (depthImageSub.width * depthImageSub.height) * 4;
+        int lenDepth = (depthImageSub.width * depthImageSub.height);
+        if (depthImageSub.encoding.Equals("32FC1"))
+        {
+            lenDepth *= 4;
+        }
+        // Put in other encoding representations...
 
         // Allocate managed memory array
         depthImage.data = new byte[lenDepth];
@@ -116,26 +178,20 @@ public class RGBDMerger : MonoBehaviour
         // Deallocate unmanaged memory
         // Unity crashes here?
         Marshal.FreeHGlobal(memDepth);
-
-        // Set image fields for png
-        depthImage.encoding = "32FC1";
-        depthImage.height = 480;
-        depthImage.width = 640;
-        depthImage.is_bigendian = 0;
-        depthImage.step = 2560;
-        depthImage.header.frame_id = "camera_rgb_optical_frame";
     }
 
     void DecompressImages()
     {
         // Each decompression takes ~10-30ms
-        // Decompress the images
-        decompressRGB();
-        decompressDepth();
 
-        // Test by publishing image and checking rviz
-        //PublishRGB(rgbImage);
-        //PublishDepth(depthImage);
+        // Always using RGB compressed
+        DecompressRGB();
+
+        // Check if using depth compressed
+        if (usingCompressedDepth)
+        {
+            DecompressDepth();
+        }
     }
 
 }

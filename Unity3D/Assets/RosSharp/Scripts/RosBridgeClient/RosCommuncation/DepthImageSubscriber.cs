@@ -25,6 +25,7 @@ namespace RosSharp.RosBridgeClient
 
         public int height;
         public int width;
+        public string encoding;
 
         private Texture2D texture2D;
         private byte[] imageData;
@@ -50,6 +51,7 @@ namespace RosSharp.RosBridgeClient
             base.Start();
             texture2D = new Texture2D(1, 1);
             meshRenderer.material = new Material(Shader.Find("Standard"));
+            stamp = new Messages.Standard.Time();
         }
         private void Update()
         {
@@ -59,6 +61,10 @@ namespace RosSharp.RosBridgeClient
 
         protected override void ReceiveMessage(Messages.Sensor.CompressedImage compressedImage)
         {
+            double lastTime = (double)stamp.secs + (double)(stamp.nsecs * .000000001);
+            double nowTime = (double)compressedImage.header.stamp.secs + (double)(compressedImage.header.stamp.nsecs * .000000001);
+            //MonoBehaviour.print(string.Format("depth compressed last time: {0} now time: {1}", lastTime, nowTime));
+            MonoBehaviour.print(string.Format("depth compressed elapsed time: {0}", (nowTime - lastTime)));
             stamp = compressedImage.header.stamp;
             imageData = compressedImage.data;
             isMessageReceived = true;
