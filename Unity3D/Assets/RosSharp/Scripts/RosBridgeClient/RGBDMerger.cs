@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using RosSharp.RosBridgeClient;
 using System.Runtime.InteropServices;
-
+using System.Diagnostics;
 
 public class RGBDMerger : MonoBehaviour
 {
@@ -20,9 +20,8 @@ public class RGBDMerger : MonoBehaviour
     private string publicationIdRGB;
     public string TopicDepth;
     private string publicationIdDepth;
-
-
     
+
     // Start is called before the first frame update
     void Start()
     {
@@ -40,7 +39,7 @@ public class RGBDMerger : MonoBehaviour
     void Update()
     {
         // Make sure both images have been received
-        if (rgbImageSub.Stamp != null && depthImageSub.Stamp != null)
+        if (rgbImageSub.ImageData != null && depthImageSub.ImageData != null)
         {
             // Check if the images are stamped close together
             if (rgbImageSub.Stamp.secs - depthImageSub.Stamp.secs < 1)
@@ -129,6 +128,7 @@ public class RGBDMerger : MonoBehaviour
 
     void DecompressImages()
     {
+        // Each decompression takes ~10-30ms
         // Decompress the images
         decompressRGB();
         decompressDepth();
